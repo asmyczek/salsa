@@ -9,8 +9,24 @@ Clone the repo, install pyenv and run:
 ```bash
 pyenv virtualenv <python version, e.g. 3.8.5> salsa
 pyenv activate salsa
+pip install -r requirements.txt
+
 python -m salsa -h
 ```
 
 For details see \_\_main\_\_.py.
 
+### Service
+Service provides a higher JSON API for testing.
+To start, set HTTP port in config.json and run
+```bash
+python -m service
+```
+
+APIs:
+```bash
+../api/status/
+../api/suburbs/
+../api/findsuburb?name=<suburb name>
+../api/schedule?state=<1..8>&name=<suburb name>&block=<block id>&days=<results for today+days>
+```
