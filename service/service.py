@@ -5,8 +5,6 @@ import logging
 from typing import Dict
 from pathlib import Path
 from salsa import salsa
-from json import JSONEncoder
-from datetime import datetime
 
 
 class App(object):
