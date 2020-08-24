@@ -3,12 +3,13 @@
 salsa.py - Load shedding API for CityPower customers
 """
 
-from typing import Callable, Any
+from typing import Callable, Any, Dict
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 from json import dumps, loads
 from os.path import isfile
 from datetime import datetime, timedelta, timezone
+
 
 HEADERS = {'Accept': 'application/json;odata=verbose'}
 API_GET_STATUS = "http://loadshedding.eskom.co.za/LoadShedding/GetStatus?_={timestamp}"
@@ -55,17 +56,40 @@ def get_suburbs(force_fetch: bool = False) -> [str]:
     return subs
 
 
-def find_suburb(name: str) -> [str]:
-    return [s for s in get_suburbs() if name in s['title']]
+def find_suburb(name: str) -> [Dict]:
+    name_str = name.lower()
+    return [s for s in get_suburbs() if name_str in s['title'].lower()]
 
 
 def get_status() -> int:
     return http_get(API_GET_STATUS.format(timestamp=str(time_in_millis(datetime.now())))) - 1
 
 
-def get_schedule_for(suburb_block: str, stage: int,
-                     from_date: datetime = None,
-                     days: int = 7) -> [dict]:
+def get_block(name: str = None, block: str = None) -> str:
+    if block:
+        ublock = block.upper()
+        for suburb in get_suburbs():
+            if suburb['block'] == ublock:
+                return ublock
+        raise ValueError(f'Block {ublock} does not exist')
+    elif name:
+        suburbs = find_suburb(name)
+        if len(suburbs) == 1:
+            return suburbs[0]['block']
+        raise ValueError(f'Suburb \'{name}\' does not exist' if len(suburbs) == 0 else
+                         f'Found {len(suburbs)} suburbs \'{name}\', search and use block id for schedule.')
+    else:
+        raise ValueError(f'No name nor block provided.')
+
+
+def get_schedule(stage: int,
+                 name: str = None,
+                 block: str = None,
+                 from_date: datetime = None,
+                 days: int = 7) -> [Dict]:
+    if not name and not block:
+        raise ValueError("Provide name or block id")
+    suburb_block = get_block(name=name, block=block)
     if not from_date:
         from_date = datetime.now().replace(tzinfo=timezone.utc, hour=0, minute=0, second=0).astimezone(tz=None)
     to_datetime = lambda s: datetime.strptime(s, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc).astimezone(tz=None)

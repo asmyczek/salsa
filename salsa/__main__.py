@@ -6,7 +6,12 @@ For details run: python -m salsa -h
 """
 
 import argparse
+import sys
 from salsa import salsa
+
+
+sys.tracebacklimit = 0
+
 
 parser = argparse.ArgumentParser(description='Salsa - South Africa Load Shedding API')
 parser.version = "Salsa v0.1"
@@ -53,29 +58,10 @@ parser.add_argument('-d', '--days',
 args = parser.parse_args()
 
 
-def get_block(block: str = None, name: str = None) -> str:
-    if block:
-        ublock = block.upper()
-        for suburb in salsa.get_suburbs():
-            if suburb['block'] == ublock:
-                return ublock
-        raise ValueError(f'Block {ublock} does not exist')
-    elif name:
-        suburbs = salsa.find_suburb(name)
-        if len(suburbs) == 1:
-            return suburbs[0]['block']
-        raise ValueError(f'Suburb {name} does not exist' if suburbs else
-                         f'Found {len(suburbs)} suburbs {name}, define one.')
-
-
-def print_schedule(schedule: dict) -> None:
-    print(f"- Start: {schedule['start']}")
-    print(f"  End:   {schedule['end']}")
-
-
-def print_schedule_for_block(block: str) -> None:
-    for schedule in salsa.get_schedule_for(block, args.stage, days=args.days):
-        print_schedule(schedule)
+def print_schedule(name: str = None, block: str = None) -> None:
+    for schedule in salsa.get_schedule(args.stage, name=name, block=block, days=args.days):
+        print(f"- Start: {schedule['start']}")
+        print(f"  End:   {schedule['end']}")
 
 
 if __name__ == "__main__":
@@ -89,6 +75,6 @@ if __name__ == "__main__":
         for suburb in salsa.find_suburb(" ".join(args.find_suburb)):
             print(f"{suburb['title']} - {suburb['block']}")
     elif args.schedule_by_block:
-        print_schedule_for_block(get_block(block=args.schedule_by_block))
+        print_schedule(block=args.schedule_by_block)
     elif args.schedule_by_name:
-        print_schedule_for_block(get_block(name=" ".join(args.schedule_by_name)))
+        print_schedule(name=" ".join(args.schedule_by_name))
