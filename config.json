@@ -1,5 +1,16 @@
 {
+  "location": {
+    "block": "2A"
+  },
   "server": {
     "port": 8080
+  },
+  "mqtt": {
+    "client_name": "salsa-notifier",
+    "broker": "localhost",
+    "user": "user",
+    "password": "pass",
+    "port": 1883,
+    "topic": "load-shedding"
   }
 }
