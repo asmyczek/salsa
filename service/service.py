@@ -23,7 +23,7 @@ class Api(object):
 
 
 @cherrypy.expose
-class ApiSuburbs(object):
+class ApiList(object):
 
     @cherrypy.tools.json_out()
     def GET(self, reload: bool = False) -> Dict[str, object]:
@@ -31,11 +31,11 @@ class ApiSuburbs(object):
 
 
 @cherrypy.expose
-class ApiFindSuburb(object):
+class ApiFind(object):
 
     @cherrypy.tools.json_out()
-    def GET(self, name: str) -> Dict[str, object]:
-        return salsa.find_suburb(name)
+    def GET(self, name: str = None, block: str = None) -> Dict[str, object]:
+        return salsa.find_suburb(name=name, block=block)
 
 
 @cherrypy.expose
@@ -47,23 +47,24 @@ class ApiSchedule(object):
         return {'stage': stage,
                 'suburb': name,
                 'block': block,
-                'schedule': [{'start': s['start'].isoformat(), 'end': s['end'].isoformat()} for s in schedule]}
+                'schedule': [{'start': s['start'].isoformat(), 'end': s['end'].isoformat()}
+                             for s in schedule['schedule']]}
 
 
 @cherrypy.expose
-class ApiStatus(object):
+class ApiStage(object):
 
     @cherrypy.tools.json_out()
     def GET(self, **kwargs) -> Dict[str, object]:
-        return {'load_shedding_status': salsa.get_status()}
+        return {'load_shedding_status': salsa.get_stage()}
 
 
 def start_server(config: Dict) -> None:
     app = App()
     app.api = Api()
-    app.api.status = ApiStatus()
-    app.api.suburbs = ApiSuburbs()
-    app.api.findsuburb = ApiFindSuburb()
+    app.api.stage = ApiStage()
+    app.api.list = ApiList()
+    app.api.find = ApiFind()
     app.api.schedule = ApiSchedule()
 
     api_config = {
