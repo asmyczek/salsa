@@ -2,7 +2,7 @@
 
 import cherrypy
 import logging
-from typing import Dict
+from typing import Dict, Callable
 from pathlib import Path
 from salsa import salsa
 
@@ -59,7 +59,7 @@ class ApiStage(object):
         return {'load_shedding_status': salsa.get_stage()}
 
 
-def start_server(config: Dict) -> None:
+def start_server(config: Dict, terminate: Callable) -> None:
     app = App()
     app.api = Api()
     app.api.stage = ApiStage()
@@ -91,5 +91,6 @@ def start_server(config: Dict) -> None:
         'server.socket_host': '0.0.0.0',
         'server.socket_port': config.server.port
     }
+    cherrypy.engine.subscribe('stop', terminate)
     cherrypy.config.update(global_config)
     cherrypy.quickstart(app, '/', app_config)

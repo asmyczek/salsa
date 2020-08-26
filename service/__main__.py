@@ -28,11 +28,14 @@ if __name__ == '__main__':
     if mqtt_client:
         schedule_controller = ScheduleController(config, mqtt_client)
         schedule_controller.start()
-    try:
-        start_server(config)
-    finally:
+
+    def terminate():
         if schedule_controller:
             schedule_controller.stop()
         if mqtt_client:
             cleanup_notifier(mqtt_client)
+
+    try:
+        start_server(config, terminate)
+    finally:
         logging.info('Salsa service server stopped')

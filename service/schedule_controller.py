@@ -52,14 +52,15 @@ class ScheduleController(Thread):
         Thread.__init__(self, name='Schedule controller')
         self._mqtt_client = mqtt_client
         self._config = config
-        self._stop = Event()
+        self._stopper = Event()
         self._event_queue = PriorityQueue()
         self._stage = 0
         self._query_stage()
 
     def stop(self):
-        if not self._stop.is_set():
-            self._stop.set()
+        if not self._stopper.is_set():
+            self._stopper.set()
+        self.join()
         self._clear_queue()
         logging.info('Schedule controller stopped.')
 
@@ -101,7 +102,7 @@ class ScheduleController(Thread):
             logging.error(f'Load shedding query returned with error code {new_stage}')
 
     def run(self):
-        while not self._stop.is_set():
+        while not self._stopper.is_set():
             if datetime.now().second < SLEEP_INTERVAL:
 
                 # ping query status
