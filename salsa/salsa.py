@@ -53,16 +53,7 @@ def get_suburbs(force_fetch: bool = False) -> [str]:
                                                for r in res['d']['results']])
     with open(SUBURBS_CACHE_FILE, 'w') as file:
         file.write(dumps(subs))
-    return subs
-
-
-def find_suburb(name: str) -> [Dict]:
-    name_str = name.lower()
-    return [s for s in get_suburbs() if name_str in s['title'].lower()]
-
-
-def get_status() -> int:
-    return http_get(API_GET_STATUS.format(timestamp=str(time_in_millis(datetime.now())))) - 1
+    return subs;
 
 
 def get_block(name: str = None, block: str = None) -> str:
@@ -77,9 +68,25 @@ def get_block(name: str = None, block: str = None) -> str:
         if len(suburbs) == 1:
             return suburbs[0]['block']
         raise ValueError(f'Suburb \'{name}\' does not exist' if len(suburbs) == 0 else
-                         f'Found {len(suburbs)} suburbs \'{name}\', search and use block id for schedule.')
+                         f'Found {len(suburbs)} suburbs \'{name}\', find block id and us it for schedule query.')
     else:
         raise ValueError(f'No name nor block provided.')
+
+
+def find_suburb(name: str = None, block: str = None) -> [Dict]:
+    subs = get_suburbs()
+    if block:
+        ublock = block.upper()
+        return sorted([s for s in subs if s['block'] == ublock], key=lambda s: s['title'])
+    elif name:
+        name_str = name.lower()
+        return sorted([s for s in subs if name_str in s['title'].lower()], key=lambda s: s['title'])
+    else:
+        raise ValueError("Provide name or block id")
+
+
+def get_stage() -> int:
+    return http_get(API_GET_STATUS.format(timestamp=str(time_in_millis(datetime.now())))) - 1
 
 
 def get_schedule(stage: int,
@@ -89,11 +96,11 @@ def get_schedule(stage: int,
                  days: int = 7) -> [Dict]:
     if not name and not block:
         raise ValueError("Provide name or block id")
-    suburb_block = get_block(name=name, block=block)
+    block_id = get_block(name=name, block=block)
     if not from_date:
         from_date = datetime.now().replace(tzinfo=timezone.utc, hour=0, minute=0, second=0).astimezone(tz=None)
     to_datetime = lambda s: datetime.strptime(s, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc).astimezone(tz=None)
-    schedule = http_get(API_GET_SCHEDULE.format(block=suburb_block, stage=stage),
+    schedule = http_get(API_GET_SCHEDULE.format(block=block_id, stage=stage),
                         lambda res: [{'level': r['Title'],
                                       'id': r['ID'],
                                       'start': to_datetime(r['EventDate']),
@@ -101,4 +108,6 @@ def get_schedule(stage: int,
                                      for r in res['d']['results']])
     sorted(schedule, key=lambda s: s['start'])
     to_date = from_date + timedelta(days=days)
-    return [s for s in schedule if from_date <= s['start'] <= to_date]
+    return {'block': block_id,
+            'stage': stage,
+            'schedule': [s for s in schedule if from_date <= s['start'] <= to_date]}

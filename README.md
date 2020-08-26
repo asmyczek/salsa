@@ -14,6 +14,18 @@ pip install -r requirements.txt
 python -m salsa -h
 ```
 
+Example command
+```bash
+# Get current load shedding stage
+python -m salsa list
+
+# List all suburbs
+python -m salsa stage
+
+# Get schedule for stage and block id
+python -m salsa schedule -s 2 -b 2A
+```
+
 For details see \_\_main\_\_.py.
 
 ### Service
