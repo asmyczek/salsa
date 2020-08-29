@@ -39,9 +39,10 @@ def future_event(event_time):
     return diff and (1, -1)[diff < 0]
 
 
-def alert_event(alert, time, ):
+def alert_event(alert, time):
     def builder_function(mqtt_client, config):
         def event_function():
+            logging.debug(f'Sending alert {alert}.')
             mqtt_client.publish(f'{config("mqtt", "topic")}/alert', alert, qos=2, retain=False)
         return ScheduleEvent(time, event_function)
     return builder_function
@@ -83,6 +84,7 @@ class ScheduleController(Thread):
         self._clear_queue()
         now = datetime.now(tz=None)
         if stage > 0:
+            logging.debug('Creating alerts...')
             for s in salsa.get_schedule(stage, block=self._config.location.block, days=2)['schedule']:
                 start = s['start']
                 if start > now:
@@ -95,14 +97,17 @@ class ScheduleController(Thread):
                     self._schedule_event(alert_builder(ALERT_ROWER_OUTAGE_END, s['end']))
 
     def _query_stage(self):
+        logging.debug('Requesting load shedding stage.')
         if (new_stage := salsa.get_stage()) >= 0:
             if new_stage != self._stage:
+                logging.debug(f'Load shedding stage changed to {new_stage}.')
                 self._publish_stage(ALERT_LOAD_SHEDDING_START if new_stage > 0 else ALERT_LOAD_SHEDDING_END)
                 self._set_stage(new_stage)
         else:
             logging.error(f'Load shedding query returned with error code {new_stage}')
 
     def run(self):
+        logging.info('Starting scheduler controller.')
         while not self._stopper.is_set():
             now = datetime.now(tz=None)
             if now.second < SLEEP_INTERVAL and (now.minute % PULL_INTERVAL) == 0:
@@ -122,6 +127,7 @@ class ScheduleController(Thread):
                     self._event_queue.get().value()
 
             sleep(SLEEP_INTERVAL)
+        logging.info('Scheduler controller stopped.')
 
 
 def start_schedule_controller(config, mqtt_client):

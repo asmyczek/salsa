@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import cherrypy
+import logging
 from typing import Dict, Callable
 from pathlib import Path
 from salsa import salsa
@@ -92,4 +93,6 @@ def start_server(config: Dict, terminate: Callable) -> None:
     cherrypy.log.access_log.propagate = False
     cherrypy.engine.subscribe('stop', terminate)
     cherrypy.config.update(global_config)
+
+    logging.info(f'Starting http server on port {config("server", "port")}.')
     cherrypy.quickstart(app, '/', app_config)
