@@ -25,16 +25,18 @@ def time_in_millis(time: datetime) -> int:
     return int(round(time.timestamp() * 1000))
 
 
-def http_get(url: str, parser: Callable = lambda x: x) -> Any:
+def http_get(url: str, parser: Callable = lambda x: x, error: Any = None) -> Any:
     request = Request(url, headers=HEADERS)
     try:
         response = urlopen(request)
     except HTTPError as e:
         print('Server error.')
         print('Error code: ', e.code)
+        return error
     except URLError as e:
         print('Server not available.')
         print('Reason: ', e.reason)
+        return error
     else:
         result = loads(response.read())
         return parser(result)
@@ -50,7 +52,8 @@ def get_suburbs(force_fetch: bool = False) -> [str]:
         http_get(API_GET_SUBURBS, lambda res: [{'title': r['Title'],
                                                 'id': r['ID'],
                                                 'block': r['SubBlock']['Title']}
-                                               for r in res['d']['results']])
+                                               for r in res['d']['results']],
+                 {'d': {'results': []}})
     with open(SUBURBS_CACHE_FILE, 'w') as file:
         file.write(dumps(subs))
     return subs;
@@ -86,7 +89,7 @@ def find_suburb(name: str = None, block: str = None) -> [Dict]:
 
 
 def get_stage() -> int:
-    return http_get(API_GET_STATUS.format(timestamp=str(time_in_millis(datetime.now())))) - 1
+    return http_get(API_GET_STATUS.format(timestamp=str(time_in_millis(datetime.now()))), error=-4) - 1
 
 
 def get_schedule(stage: int,
@@ -105,7 +108,8 @@ def get_schedule(stage: int,
                                       'id': r['ID'],
                                       'start': to_datetime(r['EventDate']),
                                       'end': to_datetime(r['EndDate'])}
-                                     for r in res['d']['results']])
+                                     for r in res['d']['results']],
+                        {'d': {'results': []}})
     sorted(schedule, key=lambda s: s['start'])
     to_date = from_date + timedelta(days=days)
     return {'block': block_id,
