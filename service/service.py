@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import cherrypy
-import logging
 from typing import Dict, Callable
 from pathlib import Path
 from salsa import salsa
@@ -81,16 +80,16 @@ def start_server(config: Dict, terminate: Callable) -> None:
         '/api': { **api_config }
     }
 
-    logging.getLogger("cherrypy").propagate = False
-    logging.getLogger("cherrypy.error").addHandler(logging.StreamHandler())
-
     global_config = {
         'log.screen': False,
         'log.access_file': '',
         'log.error_file': '',
         'server.socket_host': '0.0.0.0',
-        'server.socket_port': config.server.port
+        'server.socket_port': config('server', 'port')
     }
+
+    cherrypy.log.error_log.propagate = False
+    cherrypy.log.access_log.propagate = False
     cherrypy.engine.subscribe('stop', terminate)
     cherrypy.config.update(global_config)
     cherrypy.quickstart(app, '/', app_config)

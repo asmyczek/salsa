@@ -28,28 +28,27 @@ def on_publish(client, user_data, mid):
     logging.info(f'Data published with mid {mid}.')
 
 
-def create_client(mqtt_config):
-    client = mqtt.Client(mqtt_config.client_name)
-    client.username_pw_set(mqtt_config.user, password=mqtt_config.password)
-    client.user_data_set({'config': mqtt_config})
+def create_client(config):
+    client = mqtt.Client(config('mqtt', 'client_name'))
+    client.username_pw_set(config('mqtt', 'user'), password=config.get('mqtt', 'password'))
+    client.user_data_set({'config': config})
 
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
     client.on_message = process_message
     client.on_publish = on_publish
     client.on_subscribe = lambda c, ud, mid, qos: logging.debug('Subscribed with qos {0}.'.format(qos))
-    client.will_set(f'{mqtt_config.topic}/status', 'DOWN', qos=0, retain=False)
+    client.will_set(f'{config("mqtt", "topic")}/status', 'DOWN', qos=0, retain=False)
     return client
 
 
 def start_notifier(config) -> mqtt.Client:
-    if config.mqtt:
-        mqtt_config = config.mqtt
-        client = create_client(mqtt_config)
+    if config('mqtt'):
+        client = create_client(config)
         client.loop_start()
         try:
             logging.info('Starting MQTT notifier.')
-            client.connect(mqtt_config.broker, mqtt_config.port)
+            client.connect(config('mqtt', 'broker'), config('mqtt', 'port'))
             return client
         except Exception as e:
             logging.error(e)

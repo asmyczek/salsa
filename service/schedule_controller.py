@@ -10,7 +10,8 @@ from time import sleep
 import logging
 
 
-SLEEP_INTERVAL = 2
+SLEEP_INTERVAL = 2  # in seconds
+PULL_INTERVAL = 5   # in minutes
 
 ALERT_LOAD_SHEDDING_START = 'LOAD_SHEDDING_START'
 ALERT_LOAD_SHEDDING_END = 'LOAD_SHEDDING_END'
@@ -41,7 +42,7 @@ def future_event(event_time):
 def alert_event(alert, time, ):
     def builder_function(mqtt_client, config):
         def event_function():
-            mqtt_client.publish(f'{config.mqtt.topic}/alert', alert, qos=2, retain=False)
+            mqtt_client.publish(f'{config("mqtt", "topic")}/alert', alert, qos=2, retain=False)
         return ScheduleEvent(time, event_function)
     return builder_function
 
@@ -103,7 +104,8 @@ class ScheduleController(Thread):
 
     def run(self):
         while not self._stopper.is_set():
-            if datetime.now().second < SLEEP_INTERVAL:
+            now = datetime.now(tz=None)
+            if now.second < SLEEP_INTERVAL and (now.minute % PULL_INTERVAL) == 0:
 
                 # ping query status
                 self._query_stage()
@@ -120,3 +122,9 @@ class ScheduleController(Thread):
                     self._event_queue.get().value()
 
             sleep(SLEEP_INTERVAL)
+
+
+def start_schedule_controller(config, mqtt_client):
+    schedule_controller = ScheduleController(config, mqtt_client)
+    schedule_controller.start()
+    return schedule_controller

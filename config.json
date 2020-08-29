@@ -12,5 +12,9 @@
     "password": "pass",
     "port": 1883,
     "topic": "load-shedding"
+  },
+  "logging": {
+    "level": "DEBUG",
+    "file": null
   }
 }
