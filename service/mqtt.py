@@ -7,14 +7,14 @@ import paho.mqtt.client as mqtt
 def on_connect(client, user_data, flags, rc):
     if rc == 0:
         logging.info('Connected to mqtt broker.')
-        client.subscribe(f'{client.config.topic}/sync')
-        client.publish(f'{user_data["config"]("topic")}/status', 'UP', qos=2, retain=False)
+        logging.info(f'Subscribing to topic {user_data["config"]("mqtt", "topic")}/sync.')
+        client.subscribe(f'{user_data["config"]("mqtt", "topic")}/sync')
+        client.publish(f'{user_data["config"]("mqtt", "topic")}/status', 'UP', qos=2, retain=False)
     else:
         logging.error(f'Unable to establish connection. Status {rc}')
 
 
 def on_disconnect(client, user_data, rc):
-    #client.publish(f'{user_data["config"]("topic")}/status', 'DOWN', qos=2, retain=False)
     logging.info(f'Disconnected from mqtt broker. Status {rc}')
 
 

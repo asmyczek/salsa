@@ -27,7 +27,10 @@ class Config(object):
     def get(self, *args) -> Any:
         c = self._config
         for a in args:
-            c = c.get(a, {})
+            if a in c:
+                c = c[a]
+            else:
+                return None
         return c
 
     def set(self, value: Any, *args) -> Any:

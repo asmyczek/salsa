@@ -67,7 +67,7 @@ class ScheduleController(Thread):
         logging.info('Schedule controller stopped.')
 
     def _publish_stage(self, status):
-        self._mqtt_client.publish(f'{self._config.mqtt.topic}/stage', status, qos=2, retain=False)
+        self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', status, qos=2, retain=False)
 
     def _schedule_event(self, event: ScheduleEvent):
         if future_event(event.key) > 0:
@@ -85,7 +85,7 @@ class ScheduleController(Thread):
         now = datetime.now(tz=None)
         if stage > 0:
             logging.debug('Creating alerts...')
-            for s in salsa.get_schedule(stage, block=self._config.location.block, days=2)['schedule']:
+            for s in salsa.get_schedule(stage, block=self._config('salsa', 'block'), days=2)['schedule']:
                 start = s['start']
                 if start > now:
                     alert_builder = alert_event(self._mqtt_client, self._config)
@@ -108,9 +108,10 @@ class ScheduleController(Thread):
 
     def run(self):
         logging.info('Starting scheduler controller.')
+        interval = self._config('salsa', 'interval') or PULL_INTERVAL
         while not self._stopper.is_set():
             now = datetime.now(tz=None)
-            if now.second < SLEEP_INTERVAL and (now.minute % PULL_INTERVAL) == 0:
+            if now.second < SLEEP_INTERVAL and (now.minute % interval) == 0:
 
                 # ping query status
                 self._query_stage()

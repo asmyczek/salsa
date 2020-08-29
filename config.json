@@ -1,6 +1,7 @@
 {
-  "location": {
-    "block": "2A"
+  "salsa": {
+    "block": "2A",
+    "interval": 5
   },
   "server": {
     "port": 8080
