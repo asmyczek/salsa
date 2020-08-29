@@ -13,6 +13,7 @@ import logging
 SLEEP_INTERVAL = 2  # in seconds
 PULL_INTERVAL = 5   # in minutes
 
+LOAD_SHEDDING_STAGE = 'LOAD_SHEDDING_STAGE'
 ALERT_LOAD_SHEDDING_START = 'LOAD_SHEDDING_START'
 ALERT_LOAD_SHEDDING_END = 'LOAD_SHEDDING_END'
 ALERT_POWER_OUTAGE_START = 'POWER_OUTAGE_START'
@@ -66,9 +67,6 @@ class ScheduleController(Thread):
         self._clear_queue()
         logging.info('Schedule controller stopped.')
 
-    def _publish_stage(self, status):
-        self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', status, qos=2, retain=False)
-
     def _schedule_event(self, event: ScheduleEvent):
         if future_event(event.key) > 0:
             self._event_queue.put(event)
@@ -99,9 +97,13 @@ class ScheduleController(Thread):
     def _query_stage(self):
         logging.debug('Requesting load shedding stage.')
         if (new_stage := salsa.get_stage()) >= 0:
+            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', new_stage, qos=2, retain=False)
             if new_stage != self._stage:
                 logging.debug(f'Load shedding stage changed to {new_stage}.')
-                self._publish_stage(ALERT_LOAD_SHEDDING_START if new_stage > 0 else ALERT_LOAD_SHEDDING_END)
+                self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/alert',
+                                          ALERT_LOAD_SHEDDING_START if new_stage > 0 else ALERT_LOAD_SHEDDING_END,
+                                          qos=2,
+                                          retain=False)
                 self._set_stage(new_stage)
         else:
             logging.error(f'Load shedding query returned with error code {new_stage}')
