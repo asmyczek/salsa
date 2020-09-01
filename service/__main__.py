@@ -30,7 +30,7 @@ if __name__ == '__main__':
     config = Config(args.config)
     if args.port:
         config.set(args.port, 'server', 'port')
-    logging.basicConfig(filename=config('logging',' file'),
+    logging.basicConfig(filename=config('logging', ' file'),
                         format='%(asctime)s %(levelname)-8s %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',
                         level=logging.getLevelName(config('logging', 'level')))
@@ -48,4 +48,3 @@ if __name__ == '__main__':
         start_server(config, terminate)
     finally:
         logging.info('Salsa service server stopped')
-
