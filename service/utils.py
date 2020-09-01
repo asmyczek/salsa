@@ -3,6 +3,7 @@
 from typing import Dict, Any
 from json import loads
 from pathlib import Path
+from queue import PriorityQueue, Empty
 import logging
 
 
@@ -40,3 +41,12 @@ class Config(object):
                 c[a] = {}
             c = c[a]
         c[args[-1]] = value
+
+
+class PeekPriorityQueue(PriorityQueue):
+    def peek(self):
+        try:
+            with self.mutex:
+                return self.queue[0]
+        except IndexError:
+            raise Empty
