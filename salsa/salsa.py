@@ -28,14 +28,10 @@ def time_in_millis(time: datetime) -> int:
 def http_get(url: str, parser: Callable = lambda x: x, error: Any = None) -> Any:
     request = Request(url, headers=HEADERS)
     try:
-        response = urlopen(request)
-    except HTTPError as e:
+        response = urlopen(request, timeout=4)
+    except (OSError, HTTPError, URLError) as e:
         print('Server error.')
-        print('Error code: ', e.code)
-        return error
-    except URLError as e:
-        print('Server not available.')
-        print('Reason: ', e.reason)
+        print('Error code: ', e)
         return error
     else:
         result = loads(response.read())
