@@ -6,8 +6,7 @@ import paho.mqtt.client as mqtt
 
 def on_connect(client, user_data, flags, rc):
     if rc == 0:
-        logging.info('Connected to mqtt broker.')
-        logging.info(f'Subscribing to topic {user_data["config"]("mqtt", "topic")}/sync.')
+        logging.info(f'Subscribing to MQTT topic {user_data["config"]("mqtt", "topic")}/sync.')
         client.subscribe(f'{user_data["config"]("mqtt", "topic")}/sync')
         client.publish(f'{user_data["config"]("mqtt", "topic")}/status', 'UP', qos=2, retain=False)
     else:
@@ -60,5 +59,6 @@ def start_notifier(config) -> mqtt.Client:
 
 def cleanup_notifier(client: mqtt.Client):
     if client is not None:
+        logging.debug('Cleaning up notifier.')
         client.disconnect()
         client.loop_stop()

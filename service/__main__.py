@@ -39,6 +39,7 @@ if __name__ == '__main__':
     schedule_controller = start_schedule_controller(config, mqtt_client) if mqtt_client else None
 
     def terminate():
+        logging.info('Service terminate called.')
         if schedule_controller:
             schedule_controller.stop()
         if mqtt_client:

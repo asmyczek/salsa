@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from threading import Thread, Event
-from dataclasses import dataclass
-from typing import Callable
+from typing import Tuple
 from datetime import datetime, timedelta
 from salsa import salsa
 from time import sleep
@@ -25,16 +24,6 @@ ALERT_ROWER_OUTAGE_15MIN = 'POWER_OUTAGE_IN_15MIN'
 ALERT_ROWER_OUTAGE_30MIN = 'POWER_OUTAGE_IN_30MIN'
 
 
-@dataclass(order=True)
-class ScheduleEvent:
-    key: datetime
-    value: Callable
-
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-
-
 def future_event(event_time):
     diff = event_time.replace(second=0, microsecond=0) - \
             datetime.now().replace(second=0, microsecond=0).astimezone(tz=None)
@@ -44,18 +33,16 @@ def future_event(event_time):
 def alert_event(mqtt_client, config):
     def builder_function(alert, time):
         def event_function():
-            logging.debug(f'Publishing /alert {alert}')
+            logging.info(f'Publishing /alert {alert}')
             mqtt_client.publish(f'{config("mqtt", "topic")}/alert', alert, qos=2, retain=False)
-        return ScheduleEvent(time, event_function)
+        return time, event_function
     return builder_function
 
 
 def on_syc(controller):
     def on_message(client, user_data, message):
-        logging.debug('Forcing status update.')
-        stage = controller.query_stage(force=True)
-        controller.set_stage(stage)
-        logging.debug(f'Updated load shedding stage to {stage}')
+        logging.info('Forcing status update.')
+        controller.query_stage(republish=True)
     return on_message
 
 
@@ -69,37 +56,36 @@ class ScheduleController(Thread):
         self._stopper = Event()
         self._event_queue = PeekPriorityQueue()
         self._stage = 0
-        self.query_stage()
 
     def stop(self):
+        logging.debug('Requesting schedule controller stop.')
         if not self._stopper.is_set():
             self._stopper.set()
         self._clear_queue()
         self.join()
-        logging.info('Schedule controller stopped.')
 
-    def _schedule_event(self, event: ScheduleEvent):
-        if future_event(event.key) > 0:
+    def _schedule_event(self, event: Tuple):
+        if future_event(event[0]) > 0:
             self._event_queue.put(event)
         else:
-            logging.error(f'Scheduling event for past time {event.key}')
+            logging.error(f'Scheduling event for past time {event[0]}')
 
     def _clear_queue(self):
         while not self._event_queue.empty():
             self._event_queue.get()
 
-    def set_stage(self, stage):
+    def _set_stage(self, stage):
         self._stage = stage
         self._clear_queue()
         now = datetime.now().astimezone(tz=None)
         if stage > 0:
-            logging.debug('Creating alerts...')
+            logging.info('Creating alerts...')
             schedule = salsa.get_schedule(stage, block=self._config('salsa', 'block'), days=2)
             pub_schedule = dumps({'stage': stage,
                                   'block': schedule['block'],
                                   'schedule': [{'start': s['start'].isoformat(), 'end': s['end'].isoformat()}
                                                for s in schedule['schedule']]})
-            logging.debug(f'Publishing /schedule {pub_schedule}')
+            logging.info(f'Publishing /schedule {pub_schedule}')
             self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', pub_schedule, qos=2, retain=False)
             for s in schedule['schedule']:
                 start = s['start']
@@ -112,40 +98,41 @@ class ScheduleController(Thread):
                     self._schedule_event(alert_builder(ALERT_ROWER_OUTAGE_30MIN, start - timedelta(minutes=-30)))
                     self._schedule_event(alert_builder(ALERT_ROWER_OUTAGE_END, s['end']))
 
-    def query_stage(self):
+    def query_stage(self, republish: bool = False):
         logging.debug('Requesting load shedding stage.')
         if (new_stage := salsa.get_stage()) >= 0:
-            logging.debug(f'Publishing /stage {new_stage}')
+            logging.info(f'Publishing /stage {new_stage}')
             self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', new_stage, qos=2, retain=False)
-            if new_stage != self._stage:
+            if new_stage != self._stage or republish:
                 alert = ALERT_LOAD_SHEDDING_START if new_stage > 0 else ALERT_LOAD_SHEDDING_END
-                logging.debug(f'Publishing /alert {alert}')
+                logging.info(f'Publishing /alert {alert}')
                 self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/alert', alert, qos=2, retain=False)
-                self.set_stage(new_stage)
+                self._set_stage(new_stage)
         else:
             logging.error(f'Load shedding query returned with error code {new_stage}')
-        return new_stage
 
     def run(self):
         logging.info('Starting scheduler controller.')
         interval = self._config('salsa', 'interval') or PULL_INTERVAL
+        self.query_stage()
         while not self._stopper.is_set():
             now = datetime.now().astimezone(tz=None)
-            if now.second < SLEEP_INTERVAL and (now.minute % interval) == 0:
+            if now.second < SLEEP_INTERVAL:
 
                 # ping query status
-                self.query_stage()
+                if (now.minute % interval) == 0:
+                    self.query_stage()
 
                 # remove previous dates
                 while not self._event_queue.empty() and \
-                        future_event(self._event_queue.peek().key) < 0:
+                        future_event(self._event_queue.peek()[0]) < 0:
                     event = self._event_queue.get()
-                    logging.warning(f'Past event at {event.key} identified. Discarding.')
+                    logging.warning(f'Past event at {event[0]} identified. Discarding.')
 
                 # process current event
                 while not self._event_queue.empty() and \
-                        future_event(self._event_queue.peek().key) == 0:
-                    self._event_queue.get().value()
+                        future_event(self._event_queue.peek()[0]) == 0:
+                    self._event_queue.get()[1]()
 
             sleep(SLEEP_INTERVAL)
         logging.info('Scheduler controller stopped.')
