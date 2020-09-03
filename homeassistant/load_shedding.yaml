@@ -1,0 +1,28 @@
+# -------
+# Sensors
+# -------
+
+sensor:
+  - platform: mqtt
+    name: "Load shedding Stage"
+    state_topic: "load-shedding/stage"
+    availability:
+      - topic: "load-shedding/status"
+    payload_available: "online"
+    payload_not_available: "offline"
+
+  - platform: mqtt
+    name: "Load shedding Alert"
+    state_topic: "load-shedding/alert"
+    availability:
+      - topic: "load-shedding/status"
+    payload_available: "online"
+    payload_not_available: "offline"
+
+  - platform: mqtt
+    name: "Load shedding Schedule"
+    state_topic: "load-shedding/schedule"
+    availability:
+      - topic: "load-shedding/status"
+    payload_available: "online"
+    payload_not_available: "offline"

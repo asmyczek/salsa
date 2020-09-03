@@ -8,7 +8,7 @@ def on_connect(client, user_data, flags, rc):
     if rc == 0:
         logging.info(f'Subscribing to MQTT topic {user_data["config"]("mqtt", "topic")}/sync.')
         client.subscribe(f'{user_data["config"]("mqtt", "topic")}/sync')
-        client.publish(f'{user_data["config"]("mqtt", "topic")}/status', 'UP', qos=2, retain=False)
+        client.publish(f'{user_data["config"]("mqtt", "topic")}/status', 'online', qos=2, retain=False)
     else:
         logging.error(f'Unable to establish connection. Status {rc}')
 
@@ -31,13 +31,12 @@ def create_client(config):
     client = mqtt.Client(config('mqtt', 'client_name'))
     client.username_pw_set(config('mqtt', 'user'), password=config.get('mqtt', 'password'))
     client.user_data_set({'config': config})
-
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
     client.on_message = on_message
     client.on_publish = on_publish
     client.on_subscribe = lambda c, ud, mid, qos: logging.debug('Subscribed with qos {0}.'.format(qos))
-    client.will_set(f'{config("mqtt", "topic")}/status', 'DOWN', qos=0, retain=False)
+    client.will_set(f'{config("mqtt", "topic")}/status', 'offline', qos=0, retain=False)
     return client
 
 

@@ -121,6 +121,8 @@ class ScheduleController(Thread):
 
                 # ping query status
                 if (now.minute % interval) == 0:
+                    # status ping
+                    self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/status', 'online', qos=2, retain=False)
                     self.query_stage()
 
                 # remove previous dates
@@ -135,6 +137,7 @@ class ScheduleController(Thread):
                     self._event_queue.get()[1]()
 
             sleep(SLEEP_INTERVAL)
+
         logging.info('Scheduler controller stopped.')
 
 
