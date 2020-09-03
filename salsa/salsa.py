@@ -5,10 +5,10 @@ salsa.py - Load shedding API for CityPower customers
 
 from typing import Callable, Any, Dict
 from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
 from json import dumps, loads
 from os.path import isfile
 from datetime import datetime, timedelta, timezone
+import sys
 
 
 HEADERS = {'Accept': 'application/json;odata=verbose'}
@@ -29,9 +29,9 @@ def http_get(url: str, parser: Callable = lambda x: x, error: Any = None) -> Any
     request = Request(url, headers=HEADERS)
     try:
         response = urlopen(request, timeout=4)
-    except (OSError, HTTPError, URLError) as e:
+    except:
         print('Server error.')
-        print('Error code: ', e)
+        print(f'> {sys.exc_info()}')
         return error
     else:
         result = loads(response.read())
