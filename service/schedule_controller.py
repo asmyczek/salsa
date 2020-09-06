@@ -18,10 +18,7 @@ ALERT_LOAD_SHEDDING_START = 'LOAD_SHEDDING_START'
 ALERT_LOAD_SHEDDING_END = 'LOAD_SHEDDING_END'
 ALERT_POWER_OUTAGE_START = 'POWER_OUTAGE_START'
 ALERT_ROWER_OUTAGE_END = 'POWER_OUTAGE_END'
-ALERT_POWER_OUTAGE_5MIN = 'POWER_OUTAGE_IN_5MIN'
-ALERT_ROWER_OUTAGE_10MIN = 'POWER_OUTAGE_IN_10MIN'
-ALERT_ROWER_OUTAGE_15MIN = 'POWER_OUTAGE_IN_15MIN'
-ALERT_ROWER_OUTAGE_30MIN = 'POWER_OUTAGE_IN_30MIN'
+ALERT_POWER_OUTAGE_IN = 'POWER_OUTAGE_IN'
 
 
 def future_event(event_time):
@@ -31,11 +28,14 @@ def future_event(event_time):
 
 
 def alert_event(mqtt_client, config):
-    def builder_function(alert, time):
+    def builder_function(time, alert, counter=None):
+        start = time - timedelta(minutes=-counter) if counter else time
+
         def event_function():
-            logging.info(f'Publishing /alert {alert}')
-            mqtt_client.publish(f'{config("mqtt", "topic")}/alert', alert, qos=2, retain=False)
-        return time, event_function
+            message = {'alert': alert, 'counter': counter}
+            logging.info(f'Publishing /alert {message}')
+            mqtt_client.publish(f'{config("mqtt", "topic")}/alert', message, qos=2, retain=False)
+        return start, event_function
     return builder_function
 
 
@@ -55,7 +55,7 @@ class ScheduleController(Thread):
         self._config = config
         self._stopper = Event()
         self._event_queue = PeekPriorityQueue()
-        self._stage = 0
+        self._stage = -1
 
     def stop(self):
         logging.debug('Requesting schedule controller stop.')
@@ -91,12 +91,16 @@ class ScheduleController(Thread):
                 start = s['start']
                 if start > now:
                     alert_builder = alert_event(self._mqtt_client, self._config)
-                    self._schedule_event(alert_builder(ALERT_POWER_OUTAGE_START, start))
-                    self._schedule_event(alert_builder(ALERT_POWER_OUTAGE_5MIN, start - timedelta(minutes=-5)))
-                    self._schedule_event(alert_builder(ALERT_ROWER_OUTAGE_10MIN, start - timedelta(minutes=-10)))
-                    self._schedule_event(alert_builder(ALERT_ROWER_OUTAGE_15MIN, start - timedelta(minutes=-15)))
-                    self._schedule_event(alert_builder(ALERT_ROWER_OUTAGE_30MIN, start - timedelta(minutes=-30)))
-                    self._schedule_event(alert_builder(ALERT_ROWER_OUTAGE_END, s['end']))
+                    self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_START))
+                    self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=5))
+                    self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=10))
+                    self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=15))
+                    self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=30))
+                    self._schedule_event(alert_builder(s['end'], ALERT_ROWER_OUTAGE_END))
+        elif stage == 0:
+            pub_schedule = dumps({'stage': stage, 'schedule': []})
+            logging.info(f'Publishing /schedule {pub_schedule}')
+            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', pub_schedule, qos=2, retain=False)
 
     def query_stage(self, republish: bool = False):
         logging.debug('Requesting load shedding stage.')
@@ -121,8 +125,6 @@ class ScheduleController(Thread):
 
                 # ping query status
                 if (now.minute % interval) == 0:
-                    # status ping
-                    self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/status', 'online', qos=2, retain=False)
                     self.query_stage()
 
                 # remove previous dates
