@@ -32,7 +32,7 @@ def alert_event(mqtt_client, config):
         start = time - timedelta(minutes=-counter) if counter else time
 
         def event_function():
-            message = {'alert': alert, 'counter': counter}
+            message = dumps({'alert': alert, 'counter': counter})
             logging.info(f'Publishing /alert {message}')
             mqtt_client.publish(f'{config("mqtt", "topic")}/alert', message, qos=2, retain=False)
         return start, event_function
@@ -108,8 +108,8 @@ class ScheduleController(Thread):
             logging.info(f'Publishing /stage {new_stage}')
             self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', new_stage, qos=2, retain=False)
             if new_stage != self._stage or republish:
-                message = {'alert': ALERT_LOAD_SHEDDING_START if new_stage > 0 else ALERT_LOAD_SHEDDING_END,
-                           'counter': None}
+                message = dumps({'alert': ALERT_LOAD_SHEDDING_START if new_stage > 0 else ALERT_LOAD_SHEDDING_END,
+                                 'counter': None})
                 logging.info(f'Publishing /alert {message}')
                 self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/alert', message, qos=2, retain=False)
                 self._set_stage(new_stage)
