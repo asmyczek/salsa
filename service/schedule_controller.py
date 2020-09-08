@@ -108,9 +108,10 @@ class ScheduleController(Thread):
             logging.info(f'Publishing /stage {new_stage}')
             self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', new_stage, qos=2, retain=False)
             if new_stage != self._stage or republish:
-                alert = ALERT_LOAD_SHEDDING_START if new_stage > 0 else ALERT_LOAD_SHEDDING_END
-                logging.info(f'Publishing /alert {alert}')
-                self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/alert', alert, qos=2, retain=False)
+                message = {'alert': ALERT_LOAD_SHEDDING_START if new_stage > 0 else ALERT_LOAD_SHEDDING_END,
+                           'counter': None}
+                logging.info(f'Publishing /alert {message}')
+                self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/alert', message, qos=2, retain=False)
                 self._set_stage(new_stage)
         else:
             logging.error(f'Load shedding query returned with error code {new_stage}')
@@ -147,3 +148,4 @@ def start_schedule_controller(config, mqtt_client):
     schedule_controller = ScheduleController(config, mqtt_client)
     schedule_controller.start()
     return schedule_controller
+
