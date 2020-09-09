@@ -56,7 +56,7 @@ class ApiStage(object):
 
     @cherrypy.tools.json_out()
     def GET(self, **kwargs) -> Dict[str, object]:
-        return {'load_shedding_status': salsa.get_stage()}
+        return {'load_shedding_stage': salsa.get_stage()}
 
 
 def start_server(config: Dict, terminate: Callable) -> None:

@@ -14,10 +14,10 @@ import logging
 SLEEP_INTERVAL = 2  # in seconds
 PULL_INTERVAL = 5   # in minutes
 
-ALERT_LOAD_SHEDDING_START = 'LOAD_SHEDDING_START'
-ALERT_LOAD_SHEDDING_END = 'LOAD_SHEDDING_END'
-ALERT_POWER_OUTAGE_START = 'POWER_OUTAGE_START'
-ALERT_ROWER_OUTAGE_END = 'POWER_OUTAGE_END'
+ALERT_LOAD_SHEDDING_ON = 'LOAD_SHEDDING_ON'
+ALERT_LOAD_SHEDDING_OFF = 'LOAD_SHEDDING_OFF'
+ALERT_POWER_OUTAGE_ON = 'POWER_OUTAGE_ON'
+ALERT_ROWER_OUTAGE_OFF = 'POWER_OUTAGE_OFF'
 ALERT_POWER_OUTAGE_IN = 'POWER_OUTAGE_IN'
 
 
@@ -34,7 +34,7 @@ def alert_event(mqtt_client, config):
         def event_function():
             message = dumps({'alert': alert, 'counter': counter})
             logging.info(f'Publishing /alert {message}')
-            mqtt_client.publish(f'{config("mqtt", "topic")}/alert', message, qos=2, retain=False)
+            mqtt_client.publish(f'{config("mqtt", "topic")}/alert', message, qos=2, retain=True)
         return start, event_function
     return builder_function
 
@@ -86,32 +86,32 @@ class ScheduleController(Thread):
                                   'schedule': [{'start': s['start'].isoformat(), 'end': s['end'].isoformat()}
                                                for s in schedule['schedule']]})
             logging.info(f'Publishing /schedule {pub_schedule}')
-            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', pub_schedule, qos=2, retain=False)
+            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', pub_schedule, qos=2, retain=True)
             for s in schedule['schedule']:
                 start = s['start']
                 if start > now:
                     alert_builder = alert_event(self._mqtt_client, self._config)
-                    self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_START))
+                    self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=0))
                     self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=5))
                     self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=10))
                     self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=15))
                     self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=30))
-                    self._schedule_event(alert_builder(s['end'], ALERT_ROWER_OUTAGE_END))
+                    self._schedule_event(alert_builder(s['end'], ALERT_ROWER_OUTAGE_OFF))
         elif stage == 0:
             pub_schedule = dumps({'stage': stage, 'schedule': []})
             logging.info(f'Publishing /schedule {pub_schedule}')
-            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', pub_schedule, qos=2, retain=False)
+            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', pub_schedule, qos=2, retain=True)
 
     def query_stage(self, republish: bool = False):
         logging.debug('Requesting load shedding stage.')
         if (new_stage := salsa.get_stage()) >= 0:
             logging.info(f'Publishing /stage {new_stage}')
-            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', new_stage, qos=2, retain=False)
+            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', new_stage, qos=2, retain=True)
             if new_stage != self._stage or republish:
-                message = dumps({'alert': ALERT_LOAD_SHEDDING_START if new_stage > 0 else ALERT_LOAD_SHEDDING_END,
+                message = dumps({'alert': ALERT_LOAD_SHEDDING_ON if new_stage > 0 else ALERT_LOAD_SHEDDING_OFF,
                                  'counter': None})
                 logging.info(f'Publishing /alert {message}')
-                self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/alert', message, qos=2, retain=False)
+                self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/alert', message, qos=2, retain=True)
                 self._set_stage(new_stage)
         else:
             logging.error(f'Load shedding query returned with error code {new_stage}')
