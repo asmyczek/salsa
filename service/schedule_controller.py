@@ -18,6 +18,7 @@ ALERT_LOAD_SHEDDING_ON = 'LOAD_SHEDDING_ON'
 ALERT_LOAD_SHEDDING_OFF = 'LOAD_SHEDDING_OFF'
 ALERT_POWER_OUTAGE_ON = 'POWER_OUTAGE_ON'
 ALERT_ROWER_OUTAGE_OFF = 'POWER_OUTAGE_OFF'
+ALERT_POWER_OUTAGE_NOW = 'POWER_OUTAGE_NOW'
 ALERT_POWER_OUTAGE_IN = 'POWER_OUTAGE_IN'
 
 
@@ -91,7 +92,7 @@ class ScheduleController(Thread):
                 start = s['start']
                 if start > now:
                     alert_builder = alert_event(self._mqtt_client, self._config)
-                    self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=0))
+                    self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_NOW))
                     self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=5))
                     self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=10))
                     self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=15))
