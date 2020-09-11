@@ -4,7 +4,7 @@
 
 sensor:
   - platform: mqtt
-    name: "Load shedding Stage"
+    name: "Load Shedding Stage"
     state_topic: "load-shedding/stage"
     availability:
       - topic: "load-shedding/status"
@@ -12,17 +12,79 @@ sensor:
     payload_not_available: "offline"
 
   - platform: mqtt
-    name: "Load shedding Alert"
-    state_topic: "load-shedding/alert"
+    name: "Load Shedding Schedule"
+    state_topic: "load-shedding/schedule"
+    json_attributes_topic: "load-shedding/schedule"
+    json_attributes_template: "{{ value | tojson }}"
     availability:
       - topic: "load-shedding/status"
     payload_available: "online"
     payload_not_available: "offline"
 
-  - platform: mqtt
-    name: "Load shedding Schedule"
-    state_topic: "load-shedding/schedule"
-    availability:
-      - topic: "load-shedding/status"
-    payload_available: "online"
-    payload_not_available: "offline"
+
+# ----------------
+# Automation alert
+# ----------------
+
+automation:
+
+  - alias: 'Power outage now'
+    trigger:
+      - platform: mqtt
+        topic: "load-shedding/alert"
+    condition:
+      condition: template
+      value_template: "{{ trigger.payload_json.alert == 'POWER_OUTAGE_NOW' }}"
+    action:
+      - service: script.turn_on
+        entity_id: script.power_outage_alert
+        data_template:
+          variables:
+            message: "Load shedding alert! Power outage is immediate."
+
+  - alias: 'Power outage in n minutes'
+    trigger:
+      - platform: mqtt
+        topic: "load-shedding/alert"
+    condition:
+      condition: template
+      value_template: "{{ trigger.payload_json.alert == 'POWER_OUTAGE_IN' }}"
+    action:
+      - service: script.turn_on
+        entity_id: script.power_outage_alert
+        data_template:
+          variables:
+            message: "Load shedding alert! Power will be switched off in {{ trigger.payload_json.counter }} minutes."
+
+  - alias: 'Power outage off'
+    trigger:
+      - platform: mqtt
+        topic: "load-shedding/alert"
+    condition:
+      condition: template
+      value_template: "{{ trigger.payload_json.alert == 'POWER_OUTAGE_OFF' }}"
+    action:
+      - service: script.turn_on
+        entity_id: script.power_outage_alert
+        data_template:
+          variables:
+            message: "Load shedding alert! Power is expected to be back."
+
+# -------------
+# Alert scripts
+# -------------
+
+script:
+  power_outage_alert:
+    sequence:
+      - service: media_player.turn_on
+        entity_id: media_player.my_speaker
+      - service: media_player.volume_set
+        entity_id: media_player.my_speaker
+        data_template:
+          volume_level: "0.1"
+      - service: tts.google_say
+        entity_id: media_player.my_speaker
+        data_template:
+          message: "{{ message }}"
+          cache: false
