@@ -55,12 +55,33 @@ python -m service -c <config file name> -p <port>
 
 Build and run docker with:
 ```bash
-docker build -t salsa-service:latest -f Dockerfile --build-arg CONFIG=config.json .
+docker build -t salsa-service:latest -f Dockerfile .
 docker run --name salsa-service -p 8080:8080 salsa-service
 ```
+
+To build the image with a different config file, use --build-arg CONFIG=config.json mount
+the config file to /config.json in docker run.
+
 New version of openssl (>1.1.1) breaks ssl with old Eskom API.
 Dockerfile replaces openssl.cnf file with the version in ./docker directory. Remove copy line
 from ./Dockerfile if you use a different base image with old ssl version.
+
+Sample configuration for docker-compose:
+
+```
+version: '3.7'
+
+services:
+  salsa-service:
+    image: salsa-service:latest
+    container_name: salsa-service
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - {config path}:/config.json
+      - {log path}:/var/log
+```
 
 ### Home Assistant
 
