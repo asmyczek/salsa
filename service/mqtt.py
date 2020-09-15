@@ -8,7 +8,7 @@ def on_connect(client, user_data, flags, rc):
     if rc == 0:
         logging.info(f'Subscribing to MQTT topic {user_data["config"]("mqtt", "topic")}/sync.')
         client.subscribe(f'{user_data["config"]("mqtt", "topic")}/sync')
-        client.publish(f'{user_data["config"]("mqtt", "topic")}/status', 'online', qos=2, retain=False)
+        client.publish(f'{user_data["config"]("mqtt", "topic")}/status', payload='online', retain=False)
     else:
         logging.error(f'Unable to establish connection. Status {rc}')
 

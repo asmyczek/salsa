@@ -35,7 +35,7 @@ def alert_event(mqtt_client, config):
         def event_function():
             message = dumps({'alert': alert, 'counter': counter})
             logging.info(f'Publishing /alert {message}')
-            mqtt_client.publish(f'{config("mqtt", "topic")}/alert', message, qos=2, retain=True)
+            mqtt_client.publish(f'{config("mqtt", "topic")}/alert', payload=message, retain=True)
         return start, event_function
     return builder_function
 
@@ -87,7 +87,7 @@ class ScheduleController(Thread):
                                   'schedule': [{'start': s['start'].isoformat(), 'end': s['end'].isoformat()}
                                                for s in schedule['schedule']]})
             logging.info(f'Publishing /schedule {pub_schedule}')
-            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', pub_schedule, qos=2, retain=True)
+            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', payload=pub_schedule, retain=True)
             for s in schedule['schedule']:
                 start = s['start']
                 if start > now:
@@ -99,20 +99,20 @@ class ScheduleController(Thread):
                     self._schedule_event(alert_builder(start, ALERT_POWER_OUTAGE_IN, counter=30))
                     self._schedule_event(alert_builder(s['end'], ALERT_ROWER_OUTAGE_OFF))
         elif stage == 0:
-            pub_schedule = dumps({'stage': stage, 'schedule': []})
+            pub_schedule = dumps({'stage': stage, 'schedule': None})
             logging.info(f'Publishing /schedule {pub_schedule}')
-            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', pub_schedule, qos=2, retain=True)
+            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/schedule', payload=pub_schedule, retain=True)
 
     def query_stage(self, republish: bool = False):
         logging.debug('Requesting load shedding stage.')
         if (new_stage := salsa.get_stage()) >= 0:
             logging.info(f'Publishing /stage {new_stage}')
-            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', new_stage, qos=2, retain=True)
+            self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/stage', payload=new_stage, retain=True)
             if new_stage != self._stage or republish:
                 message = dumps({'alert': ALERT_LOAD_SHEDDING_ON if new_stage > 0 else ALERT_LOAD_SHEDDING_OFF,
                                  'counter': None})
                 logging.info(f'Publishing /alert {message}')
-                self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/alert', message, qos=2, retain=True)
+                self._mqtt_client.publish(f'{self._config("mqtt", "topic")}/alert', payload=message, retain=True)
                 self._set_stage(new_stage)
         else:
             logging.error(f'Load shedding query returned with error code {new_stage}')

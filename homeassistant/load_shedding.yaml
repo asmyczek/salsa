@@ -10,16 +10,17 @@ sensor:
       - topic: "load-shedding/status"
     payload_available: "online"
     payload_not_available: "offline"
+    force_update: true
 
   - platform: mqtt
     name: "Load Shedding Schedule"
     state_topic: "load-shedding/schedule"
-    json_attributes_topic: "load-shedding/schedule"
-    json_attributes_template: "{{ value | tojson }}"
+    value_template: "{{ value_json }}"
     availability:
       - topic: "load-shedding/status"
     payload_available: "online"
     payload_not_available: "offline"
+    force_update: true
 
 
 # ----------------
